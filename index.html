@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14100c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Needle Drop">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="application-name" content="Needle Drop">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>Needle Drop</title>
+<style>
+:root{
+  --bg:#14100c; --panel:#1f1812; --panel2:#2a2018; --line:#3a2c20;
+  --text:#efe4d2; --muted:#a8977f; --brass:#c9a24a; --brass2:#e6c470; --red:#a8392a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{min-height:100vh;padding:env(safe-area-inset-top) 16px calc(28px + env(safe-area-inset-bottom))}
+.wrap{max-width:480px;margin:0 auto}
+header{display:flex;align-items:baseline;justify-content:space-between;padding:18px 2px 12px}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:normal;font-size:26px;margin:0;color:var(--brass2);letter-spacing:.3px}
+h1 em{color:var(--text)}
+.status{font-size:12px;color:var(--muted);letter-spacing:.5px}
+
+/* ---------- Turntable ---------- */
+.deck{position:relative;width:100%;aspect-ratio:1/1;border-radius:18px;overflow:hidden;
+  background:
+    repeating-linear-gradient(93deg,rgba(0,0,0,0) 0 7px,rgba(0,0,0,.09) 7px 9px,rgba(255,255,255,.025) 9px 16px),
+    linear-gradient(160deg,#6a4529,#3e2716 70%,#331f11);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 12px 30px rgba(0,0,0,.55)}
+.platter{position:absolute;left:3%;top:8%;width:84%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,#2b2b2b 0 60%,#1b1b1b 61% 93%,#4a4a4a 94%,#232323 100%);
+  box-shadow:0 8px 20px rgba(0,0,0,.6)}
+.platter::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:repeating-conic-gradient(#8d8d8d 0 1.5deg,#2c2c2c 1.5deg 3deg);
+  -webkit-mask:radial-gradient(circle closest-side,transparent 95.5%,#000 96%,#000 99%,transparent 99.5%);
+          mask:radial-gradient(circle closest-side,transparent 95.5%,#000 96%,#000 99%,transparent 99.5%)}
+.record{position:absolute;left:5%;top:10%;width:80%;aspect-ratio:1;border-radius:50%;background:#111;
+  animation:spin 1.8s linear infinite;animation-play-state:paused}
+.record.spinning{animation-play-state:running}
+@keyframes spin{to{transform:rotate(360deg)}}
+.label{position:absolute;left:32.8125%;top:32.8125%;width:34.375%;aspect-ratio:1;border-radius:50%;cursor:pointer;
+  background:radial-gradient(circle,var(--red) 0 100%);background-size:cover;background-position:center;
+  box-shadow:inset 0 0 0 2px rgba(0,0,0,.25);color:#f3e7cf;overflow:hidden}
+.label .lt,.label .lb{position:absolute;left:8%;right:8%;text-align:center;line-height:1.15;
+  font-size:clamp(6px,1.9vw,9px);letter-spacing:.6px}
+.label .lt{top:17%;font-family:Georgia,serif;font-style:italic;font-size:clamp(8px,2.6vw,12px);color:var(--brass2)}
+.label .lb{bottom:15%;}
+.label .ltitle{position:absolute;top:30%;left:12%;right:12%;text-align:center;font-size:clamp(6px,1.8vw,9px);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.label.art .lt,.label.art .lb,.label.art .ltitle{display:none}
+.sheen{position:absolute;left:5%;top:10%;width:80%;aspect-ratio:1;border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 15deg,transparent 0deg 18deg,rgba(255,255,255,.10) 38deg,transparent 60deg 198deg,rgba(255,255,255,.08) 218deg,transparent 242deg);
+  -webkit-mask:radial-gradient(circle closest-side,transparent 34.6%,#000 35%);
+          mask:radial-gradient(circle closest-side,transparent 34.6%,#000 35%)}
+.arm{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;
+  filter:drop-shadow(4px 7px 4px rgba(0,0,0,.55))}
+.drophint{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:12px;color:rgba(239,228,210,.55)}
+
+/* ---------- Controls ---------- */
+.transport{display:flex;align-items:center;gap:10px;margin-top:14px}
+.btn{appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--text);
+  border-radius:12px;height:44px;min-width:44px;padding:0 14px;font-size:15px;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.btn.play{width:62px;height:62px;border-radius:50%;border:none;font-size:22px;color:#1a120c;
+  background:radial-gradient(circle at 35% 30%,var(--brass2),#946d22);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--muted);height:42px;padding:0 12px;font-size:14px;cursor:pointer}
+.seg button.on{background:var(--brass);color:#1a120c}
+.push{margin-left:auto}
+.now{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:14px}
+.now .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now .tm{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ph h2{font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel2);color:var(--text);
+  border-radius:999px;padding:9px 15px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--brass);color:#1a120c;border-color:var(--brass)}
+.row{display:grid;grid-template-columns:92px 1fr 30px;align-items:center;gap:10px;margin-top:10px;font-size:14px}
+.row .v{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--line);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;margin-top:-9px;border:none;
+  background:radial-gradient(circle at 35% 30%,var(--brass2),#8f6a22);box-shadow:0 2px 5px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-track{height:4px;background:var(--line);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;border:none;background:var(--brass)}
+.trk{display:grid;grid-template-columns:34px 1fr auto;gap:10px;width:100%;text-align:left;background:transparent;
+  border:0;border-top:1px solid var(--line);color:var(--text);padding:12px 2px;font-size:15px;cursor:pointer}
+.trk .num,.trk .d{color:var(--muted);font-variant-numeric:tabular-nums}
+.trk .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk.on .num,.trk.on .nm{color:var(--brass2)}
+.empty{color:var(--muted);font-size:14px;line-height:1.5;padding:4px 2px}
+.load{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 14px;border-radius:10px;
+  background:var(--brass);color:#1a120c;font-size:14px;font-weight:600;cursor:pointer}
+.small{font-size:12px;color:var(--muted);margin-top:16px;text-align:center;line-height:1.5}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Needle <em>Drop</em></h1>
+    <div class="status" id="status">VG+ · 33⅓</div>
+  </header>
+
+  <div class="deck" id="deck">
+    <div class="platter"></div>
+    <div class="record" id="record">
+      <div class="label" id="label" title="Tap to set label art">
+        <div class="lt">Needle Drop</div>
+        <div class="ltitle" id="labelTitle"></div>
+        <div class="lb" id="labelSide">SIDE A · 33⅓</div>
+      </div>
+    </div>
+    <div class="sheen"></div>
+    <svg class="arm" viewBox="0 0 400 400" aria-hidden="true">
+      <defs>
+        <linearGradient id="metal" x1="0" x2="1">
+          <stop offset="0" stop-color="#80858c"/><stop offset=".5" stop-color="#eef1f4"/><stop offset="1" stop-color="#767b82"/>
+        </linearGradient>
+        <radialGradient id="brassG" cx=".35" cy=".3">
+          <stop offset="0" stop-color="#f3d892"/><stop offset="1" stop-color="#9c7428"/>
+        </radialGradient>
+      </defs>
+      <circle cx="180" cy="200" r="4.5" fill="url(#metal)"/>
+      <rect x="374" y="262" width="11" height="22" rx="3" fill="#1d1d1d"/>
+      <circle cx="360" cy="60" r="31" fill="#1a1a1a"/>
+      <circle cx="360" cy="60" r="21" fill="url(#brassG)"/>
+      <g id="armG" transform="rotate(0 360 60)">
+        <rect x="349" y="6" width="22" height="28" rx="5" fill="url(#metal)"/>
+        <rect x="357" y="30" width="6" height="236" rx="3" fill="url(#metal)"/>
+        <polygon points="352,262 368,262 371,290 349,294" fill="#202020" stroke="#9aa0a6" stroke-width="1"/>
+        <rect x="368" y="266" width="15" height="3" rx="1.5" fill="url(#metal)"/>
+        <circle cx="360" cy="291" r="1.6" fill="#e6c470"/>
+        <circle cx="360" cy="60" r="8" fill="#2c2c2c" stroke="#777" stroke-width="1"/>
+      </g>
+    </svg>
+    <div class="drophint" id="hint">Load audio files to start</div>
+  </div>
+
+  <div class="transport">
+    <button class="btn play" id="playBtn" aria-label="Play">▶</button>
+    <button class="btn" id="nextBtn" aria-label="Next track">⏭</button>
+    <button class="btn" id="liftBtn">Lift</button>
+    <div class="seg push" id="rpmSeg">
+      <button data-rpm="33" class="on">33⅓</button><button data-rpm="45">45</button>
+    </div>
+  </div>
+  <div class="now"><div class="t" id="nowTitle">No record loaded</div><div class="tm" id="nowTime">Needle up</div></div>
+
+  <div class="panel">
+    <div class="ph"><h2>Condition</h2>
+      <div class="seg" id="abSeg"><button data-ab="vinyl" class="on">Vinyl</button><button data-ab="clean">Clean</button></div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="sliders"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ph"><h2>Side A</h2>
+      <label class="load">Load audio<input type="file" id="fileIn" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.aif,.aiff" multiple hidden></label>
+    </div>
+    <div id="tracks"><div class="empty">Pick the album's audio files (MP3, M4A, WAV, FLAC). They play in filename order, so numbered tracks line up as the side. Tap the record label to add cover art.</div></div>
+  </div>
+  <input type="file" id="artIn" accept="image/*" hidden>
+  <div class="small">Everything runs on your device. Files never leave your phone.</div>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const GAP = 2.4, LEAD_START = 1.7, LEAD_MID = 0.7;
+const ARM_REST = 0, ARM_START = 12, ARM_END = 34.5;
+const PRESETS = {
+  'Mint': {crackle:3,  hiss:6,  warmth:45, wow:8,  tick:0},
+  'NM':   {crackle:10, hiss:14, warmth:50, wow:14, tick:0},
+  'VG+':  {crackle:22, hiss:24, warmth:55, wow:22, tick:0},
+  'VG':   {crackle:40, hiss:36, warmth:60, wow:30, tick:15},
+  'G':    {crackle:62, hiss:52, warmth:65, wow:42, tick:45},
+  'Poor': {crackle:85, hiss:70, warmth:70, wow:58, tick:80}
+};
+const SLIDERS = [
+  ['crackle','Crackle'],['hiss','Surface'],['warmth','Warmth'],['wow','Wow/flutter'],['tick','Scratch']
+];
+const S = {tracks:[], idx:0, phase:'idle', rpm:33, clean:false, preset:'VG+',
+  crackle:22, hiss:24, warmth:55, wow:22, tick:0,
+  phaseEnd:0, cueLead:LEAD_START, armAngle:0, pausedProgress:0, resume:null, unlocked:false};
+let ctx = null; const G = {};
+const el = new Audio(); el.preload = 'auto';
+
+/* ---------------- Audio engine ---------------- */
+function initAudio(){
+  if (ctx) return;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const sr = ctx.sampleRate;
+
+  G.master = ctx.createGain(); G.master.gain.value = 0.9;
+  G.limit = ctx.createDynamicsCompressor();
+  G.limit.threshold.value = -3; G.limit.knee.value = 3; G.limit.ratio.value = 12;
+  G.limit.attack.value = 0.002; G.limit.release.value = 0.15;
+  G.master.connect(G.limit); G.limit.connect(ctx.destination);
+
+  // music source split into vinyl (wet) and clean (dry) paths
+  G.elSrc = ctx.createMediaElementSource(el);
+  G.src = ctx.createGain(); G.src.gain.value = 0;          // music gate
+  G.elSrc.connect(G.src);
+  G.dry = ctx.createGain(); G.dry.gain.value = 0;
+  G.src.connect(G.dry); G.dry.connect(G.master);
+  G.musicIn = ctx.createGain(); G.musicIn.gain.value = 0.8;
+  G.src.connect(G.musicIn);
+
+  // wow & flutter = modulated delay (pitch wobble), wet path only
+  G.wowDelay = ctx.createDelay(0.05); G.wowDelay.delayTime.value = 0.012;
+  G.wowOsc = ctx.createOscillator(); G.wowGain = ctx.createGain();
+  G.flutOsc = ctx.createOscillator(); G.flutOsc.frequency.value = 6.3; G.flutGain = ctx.createGain();
+  G.wowOsc.connect(G.wowGain); G.wowGain.connect(G.wowDelay.delayTime);
+  G.flutOsc.connect(G.flutGain); G.flutGain.connect(G.wowDelay.delayTime);
+  G.musicIn.connect(G.wowDelay);
+
+  // vinyl playback chain
+  G.vinylIn = ctx.createGain();
+  G.hp = biq('highpass', 18, 0.7);
+  G.lowShelf = biq('lowshelf', 160);
+  G.mid = biq('peaking', 2800, 0.8);
+  G.lp = biq('lowpass', 15000, 0.5);
+  G.sat = ctx.createWaveShaper(); G.sat.oversample = '2x';
+  G.dc = biq('highpass', 12, 0.7);
+  G.wet = ctx.createGain();
+  G.wowDelay.connect(G.vinylIn);
+  G.vinylIn.connect(G.hp); G.hp.connect(G.lowShelf); G.lowShelf.connect(G.mid);
+  G.mid.connect(G.lp); G.lp.connect(G.sat); G.sat.connect(G.dc); G.dc.connect(G.wet); G.wet.connect(G.master);
+
+  // groove noise: hiss + rumble, gated by needle position
+  G.grooveGate = ctx.createGain(); G.grooveGate.gain.value = 0;
+  G.grooveGate.connect(G.vinylIn);
+  G.clickBus = ctx.createGain(); G.clickBus.connect(G.grooveGate);
+  const nb = ctx.createBuffer(2, sr * 4, sr);
+  for (let c = 0; c < 2; c++){ const d = nb.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1; }
+  G.noise = ctx.createBufferSource(); G.noise.buffer = nb; G.noise.loop = true;
+  G.hissHP = biq('highpass', 500, 0.7); G.hissLP = biq('lowpass', 7000, 0.7);
+  G.swish = ctx.createGain(); G.swish.gain.value = 1;
+  G.rotLfo = ctx.createOscillator(); G.rotDepth = ctx.createGain();
+  G.rotLfo.connect(G.rotDepth); G.rotDepth.connect(G.swish.gain);
+  G.hissGain = ctx.createGain();
+  G.noise.connect(G.hissHP); G.hissHP.connect(G.hissLP); G.hissLP.connect(G.swish);
+  G.swish.connect(G.hissGain); G.hissGain.connect(G.grooveGate);
+  G.rumbleLP = biq('lowpass', 45, 1); G.rumbleGain = ctx.createGain();
+  G.noise.connect(G.rumbleLP); G.rumbleLP.connect(G.rumbleGain); G.rumbleGain.connect(G.grooveGate);
+
+  G.noise.start(); G.rotLfo.start(); G.wowOsc.start(); G.flutOsc.start();
+  makeImpulses();
+  applyAll();
+  setInterval(scheduler, 40);
+}
+function biq(type, f, q){ const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; if (q) b.Q.value = q; return b; }
+function satCurve(m){
+  const n = 1024, c = new Float32Array(n), k = 1.5;
+  for (let i = 0; i < n; i++){ const x = i/(n-1)*2-1; c[i] = (1-m)*x + m*Math.tanh(k*x)/k + m*0.06*x*x; }
+  return c;
+}
+function normalize(d){ let m = 0; for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i])); if (m) for (let i = 0; i < d.length; i++) d[i] /= m; }
+function makeImpulses(){
+  const sr = ctx.sampleRate; G.clicks = []; G.pops = [];
+  for (let i = 0; i < 28; i++){
+    const len = Math.max(8, Math.floor(sr*(0.0008 + Math.random()*0.004)));
+    const b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0);
+    const sign = Math.random() < .5 ? -1 : 1, decay = len*(0.15 + Math.random()*0.3);
+    let prev = 0;
+    for (let j = 0; j < len; j++){
+      const v = (j === 0 ? sign : 0) + (Math.random()*2-1)*0.6*Math.exp(-j/decay);
+      d[j] = v - prev*0.6; prev = v;
+    }
+    normalize(d); G.clicks.push(b);
+  }
+  for (let i = 0; i < 8; i++){
+    const len = Math.floor(sr*(0.015 + Math.random()*0.03));
+    const b = ctx.createBuffer(1, len, sr), d = b.getChannelData(0);
+    const sign = Math.random() < .5 ? -1 : 1, f = 90 + Math.random()*250, decay = len*0.25;
+    for (let j = 0; j < len; j++){
+      const env = Math.exp(-j/decay);
+      d[j] = (j < 3 ? sign*(1 - j/3) : 0) + Math.sin(2*Math.PI*f*j/sr)*env*0.7 + (Math.random()*2-1)*env*0.3;
+    }
+    normalize(d); G.pops.push(b);
+  }
+  const tl = Math.floor(sr*0.25), tb = ctx.createBuffer(1, tl, sr), td = tb.getChannelData(0);
+  for (let j = 0; j < tl; j++){
+    const t = j/sr;
+    td[j] = Math.sin(2*Math.PI*55*t)*Math.exp(-t/0.05) + 0.4*Math.sin(2*Math.PI*140*t)*Math.exp(-t/0.02)
+          + (Math.random()*2-1)*Math.exp(-t/0.008)*0.6;
+  }
+  normalize(td); G.thump = tb;
+  G.scratch = G.pops[0];
+}
+function playBuf(buf, when, amp, pan = 0, dest = G.clickBus){
+  const s = ctx.createBufferSource(); s.buffer = buf;
+  const g = ctx.createGain(); g.gain.value = amp; s.connect(g);
+  let out = g;
+  if (ctx.createStereoPanner){ const p = ctx.createStereoPanner(); p.pan.value = pan; g.connect(p); out = p; }
+  out.connect(dest); s.start(when);
+}
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const rotFreq = () => S.rpm === 45 ? 0.75 : 33.333/60;
+
+function applyAll(){
+  updateStatus();
+  if (!ctx) return;
+  const n = ctx.currentTime, h = S.hiss/100, w = S.warmth/100, wf = S.wow/100;
+  G.hissGain.gain.setTargetAtTime(Math.pow(h, 1.6)*0.03, n, 0.05);
+  G.rumbleGain.gain.setTargetAtTime(h*0.8, n, 0.05);
+  G.rotDepth.gain.value = 0.15 + 0.3*h;
+  G.lowShelf.gain.value = w*4.5;
+  G.mid.gain.value = -w*2.5;
+  G.sat.curve = satCurve(w*0.5);
+  G.wowGain.gain.setTargetAtTime(wf*0.0012, n, 0.05);
+  G.flutGain.gain.setTargetAtTime(wf*0.00004, n, 0.05);
+  G.wowOsc.frequency.value = rotFreq(); G.rotLfo.frequency.value = rotFreq();
+  G.wet.gain.setTargetAtTime(S.clean ? 0 : 1, n, 0.03);
+  G.dry.gain.setTargetAtTime(S.clean ? 0.8 : 0, n, 0.03);
+}
+function gate(v){ G.grooveGate.gain.setTargetAtTime(v, ctx.currentTime, v ? 0.02 : 0.03); }
+function musicGate(v){ G.src.gain.setTargetAtTime(v, ctx.currentTime, 0.015); }
+const inGroove = () => ['leadin','track','gap','runout'].includes(S.phase);
+
+/* ---------------- Side timeline ---------------- */
+function sideTotal(){ const n = S.tracks.length; if (!n) return 1; return S.tracks.reduce((a,t) => a + t.dur, 0) + GAP*(n-1); }
+function posOf(i){ let p = 0; for (let j = 0; j < i; j++) p += S.tracks[j].dur + GAP; return p; }
+const clamp = x => Math.max(0, Math.min(1, x));
+function sideProgress(){
+  const tot = sideTotal(), now = ctx ? ctx.currentTime : 0;
+  switch (S.phase){
+    case 'track': return clamp((posOf(S.idx) + el.currentTime)/tot);
+    case 'gap': return clamp((posOf(S.idx) - Math.max(0, S.phaseEnd - now))/tot);
+    case 'runout': return 1;
+    case 'paused': return S.pausedProgress;
+    default: return clamp(posOf(S.idx)/tot);
+  }
+}
+
+/* ---------------- Scheduler & state machine ---------------- */
+let nextClick = 0, nextTick = 0;
+function scheduler(){
+  const now = ctx.currentTime, ahead = now + 0.15;
+  // state transitions
+  if (S.phase === 'cue' && now >= S.phaseEnd) needleDown(S.cueLead);
+  else if ((S.phase === 'leadin' || S.phase === 'gap') && now >= S.phaseEnd) startTrack(S.idx, 0);
+  else if (S.phase === 'runout' && now >= S.phaseEnd) lift();
+  else if (S.phase === 'track' && el.ended) onTrackEnd();
+
+  if (!inGroove()){ nextClick = now; nextTick = now; return; }
+
+  // inner-groove treble loss
+  const base = 19000 - S.warmth*70;
+  G.lp.frequency.setTargetAtTime(base*(1 - 0.38*sideProgress()), now, 0.3);
+
+  // crackle & pops (random)
+  const c = S.crackle/100, rate = c*c*55 + (c > 0 ? 0.3 : 0);
+  if (rate > 0){
+    if (nextClick < now) nextClick = now;
+    while (nextClick < ahead){
+      if (Math.random() < 0.03*c) playBuf(pick(G.pops), nextClick, (0.25 + Math.random()*0.35)*(0.3 + c), (Math.random()-.5)*.8);
+      else playBuf(pick(G.clicks), nextClick, (0.03 + 0.35*Math.pow(Math.random(), 4))*(0.4 + 0.6*c), (Math.random()-.5)*1.2);
+      nextClick += -Math.log(1 - Math.random())/rate;
+    }
+  }
+  // once-per-revolution scratch tick, and the run-out groove loop
+  const period = 1/rotFreq();
+  const tickAmp = S.phase === 'runout' ? 0.3 : (S.tick/100)*0.22;
+  if (tickAmp > 0){
+    if (nextTick < now) nextTick = now + period*Math.random();
+    while (nextTick < ahead){
+      playBuf(G.scratch, nextTick, tickAmp, -0.1);
+      if (S.phase === 'runout') playBuf(G.thump, nextTick + 0.004, 0.07, 0);
+      nextTick += period;
+    }
+  } else nextTick = now;
+}
+
+/* ---------------- Transport ---------------- */
+function unlock(){
+  if (S.unlocked || !S.tracks.length) return;
+  S.unlocked = true;
+  G.src.gain.value = 0;
+  setSrc(S.idx);
+  el.play().then(() => { if (S.phase !== 'track') el.pause(); }).catch(() => {});
+}
+function setSrc(i){ if (el.dataset.idx !== String(i)){ el.src = S.tracks[i].url; el.dataset.idx = String(i); } }
+function motor(on){ $('#record').classList.toggle('spinning', on); }
+
+function dropAt(i){
+  if (!S.tracks.length) return;
+  initAudio(); ctx.resume(); unlock();
+  if (inGroove()) playBuf(G.clicks[1], ctx.currentTime, 0.1, 0, G.vinylIn);
+  stopMusic(); gate(0);
+  S.idx = i; motor(true);
+  const target = ARM_START + (ARM_END - ARM_START)*(posOf(i)/sideTotal());
+  S.phase = 'cue';
+  S.phaseEnd = ctx.currentTime + 0.45 + Math.abs(target - S.armAngle)/22*0.8;
+  S.cueLead = i === 0 ? LEAD_START : LEAD_MID;
+  updateUI();
+}
+function needleDown(lead){
+  playBuf(G.thump, ctx.currentTime, 0.5, 0, G.vinylIn);
+  gate(1);
+  S.phase = 'leadin'; S.phaseEnd = ctx.currentTime + lead;
+  updateUI();
+}
+function startTrack(i, offset){
+  S.idx = i; S.phase = 'track';
+  setSrc(i);
+  const go = () => {
+    try { el.currentTime = offset; } catch(e){}
+    musicGate(1);
+    el.play().catch(() => {
+      S.pausedProgress = sideProgress();
+      S.resume = {phase:'track', offset, remain:0}; S.phase = 'paused'; gate(0);
+      $('#hint').textContent = 'Tap ▶ to continue'; updateUI();
+    });
+  };
+  if (el.readyState >= 1) go(); else el.addEventListener('loadedmetadata', go, {once:true});
+  updateUI();
+}
+function onTrackEnd(){
+  if (S.phase !== 'track') return;
+  musicGate(0);
+  if (S.idx + 1 < S.tracks.length){ S.idx++; S.phase = 'gap'; S.phaseEnd = ctx.currentTime + GAP; setSrc(S.idx); }
+  else { S.phase = 'runout'; S.phaseEnd = ctx.currentTime + 40; }
+  updateUI();
+}
+function stopMusic(){ el.pause(); if (ctx) musicGate(0); }
+function pause(){
+  if (!inGroove()) return;
+  const now = ctx.currentTime;
+  S.pausedProgress = sideProgress();
+  S.resume = {phase:S.phase, offset: S.phase === 'track' ? el.currentTime : 0, remain: Math.max(0, S.phaseEnd - now)};
+  stopMusic(); gate(0);
+  playBuf(G.clicks[0], now, 0.08, 0, G.vinylIn);
+  S.phase = 'paused'; updateUI();
+}
+function resume(){
+  const r = S.resume, now = ctx.currentTime;
+  playBuf(G.thump, now, 0.3, 0, G.vinylIn); gate(1);
+  if (r.phase === 'track') startTrack(S.idx, r.offset);
+  else { S.phase = r.phase; S.phaseEnd = now + r.remain; updateUI(); }
+}
+function lift(){
+  if (!ctx) return;
+  if (inGroove()) playBuf(G.clicks[1], ctx.currentTime, 0.1, 0, G.vinylIn);
+  stopMusic(); gate(0);
+  if (S.phase === 'runout') S.idx = 0;
+  S.phase = 'idle'; motor(false); updateUI();
+}
+el.addEventListener('ended', onTrackEnd);
+el.addEventListener('loadedmetadata', () => {
+  const i = +el.dataset.idx, t = S.tracks[i];
+  if (t && isFinite(el.duration) && Math.abs(el.duration - t.dur) > 0.5){ t.dur = el.duration; renderTracks(); drawGrooves(); }
+});
+
+/* ---------------- Visuals ---------------- */
+const armG = $('#armG');
+function armTarget(){
+  if (S.phase === 'idle') return ARM_REST;
+  let a = ARM_START + (ARM_END - ARM_START)*sideProgress();
+  const t = ctx ? ctx.currentTime : 0, w = Math.sin(t*2*Math.PI*rotFreq());
+  if (S.phase === 'runout') a = ARM_END + 1.8 + 0.6*w;
+  else if (S.phase !== 'cue' && S.phase !== 'paused') a += 0.12*w;
+  return a;
+}
+function draw(){
+  requestAnimationFrame(draw);
+  const k = (S.phase === 'cue' || S.phase === 'idle') ? 0.07 : 0.35;
+  S.armAngle += (armTarget() - S.armAngle)*k;
+  armG.setAttribute('transform', `rotate(${S.armAngle.toFixed(2)} 360 60)`);
+  $('#nowTime').textContent = timeText();
+}
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s/60) + ':' + String(s%60).padStart(2, '0'); };
+function timeText(){
+  const t = S.tracks[S.idx];
+  switch (S.phase){
+    case 'track': return `${fmt(el.currentTime)} / ${fmt(t && t.dur)}`;
+    case 'gap': return 'Between tracks';
+    case 'leadin': return 'Lead-in groove';
+    case 'runout': return 'Run-out groove';
+    case 'cue': return 'Cueing…';
+    case 'paused': return 'Paused';
+    default: return 'Needle up';
+  }
+}
+function drawGrooves(){
+  const n = S.tracks.length, tot = sideTotal(), layers = [];
+  const rPct = p => (155 - p*87)/160*100;
+  for (let i = 1; i < n; i++){
+    const r = rPct((posOf(i) - GAP/2)/tot), a = (r - .9).toFixed(2), b = (r + .9).toFixed(2);
+    layers.push(`radial-gradient(circle closest-side,transparent ${a}%,#2a2a2a ${a}%,#2a2a2a ${b}%,transparent ${b}%)`);
+  }
+  layers.push('radial-gradient(circle closest-side,transparent 34.3%,#151515 34.3%,#151515 42.5%,transparent 42.5%,transparent 97%,#202020 97%)');
+  layers.push('repeating-radial-gradient(circle,#0e0e0e 0 1px,#1a1a1a 1px 2px)');
+  $('#record').style.background = layers.join(',') + ',#111';
+}
+function updateStatus(){
+  $('#status').textContent = `${S.preset || 'Custom'} · ${S.rpm === 45 ? '45' : '33⅓'}${S.clean ? ' · CLEAN' : ''}`;
+  $('#labelSide').textContent = `SIDE A · ${S.rpm === 45 ? '45' : '33⅓'}`;
+  $('#record').style.animationDuration = (1/rotFreq()).toFixed(3) + 's';
+}
+function updateUI(){
+  const playing = ['cue','leadin','track','gap','runout'].includes(S.phase);
+  $('#playBtn').textContent = playing ? '❚❚' : '▶';
+  const t = S.tracks[S.idx];
+  $('#nowTitle').textContent = t ? `A${S.idx+1} · ${t.name}` : 'No record loaded';
+  $('#labelTitle').textContent = t ? t.name : '';
+  document.querySelectorAll('.trk').forEach((b, i) => b.classList.toggle('on', i === S.idx && S.phase !== 'idle'));
+  if (S.phase !== 'paused') $('#hint').textContent = S.tracks.length ? '' : 'Load audio files to start';
+}
+function renderTracks(){
+  const box = $('#tracks');
+  if (!S.tracks.length) return;
+  box.innerHTML = '';
+  S.tracks.forEach((t, i) => {
+    const b = document.createElement('button'); b.className = 'trk';
+    b.innerHTML = `<span class="num">A${i+1}</span><span class="nm"></span><span class="d">${fmt(t.dur)}</span>`;
+    b.querySelector('.nm').textContent = t.name;
+    b.onclick = () => dropAt(i);
+    box.appendChild(b);
+  });
+  updateUI();
+}
+
+/* ---------------- Files ---------------- */
+function cleanName(n){
+  return n.replace(/\.[^.]+$/, '').replace(/^\s*\d{1,3}\s*[-._)]*\s*/, '').replace(/_/g, ' ').trim() || n;
+}
+function probe(url){
+  return new Promise(res => {
+    const a = new Audio(); a.preload = 'metadata';
+    a.onloadedmetadata = () => res(isFinite(a.duration) ? a.duration : 0);
+    a.onerror = () => res(-1); a.src = url;
+  });
+}
+async function loadFiles(list){
+  const files = [...list].filter(f => (f.type || '').startsWith('audio') || /\.(mp3|m4a|aac|wav|flac|ogg|aiff?)$/i.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  if (!files.length) return;
+  if (ctx) lift();
+  S.tracks.forEach(t => URL.revokeObjectURL(t.url));
+  S.tracks = []; S.idx = 0; el.removeAttribute('src'); delete el.dataset.idx;
+  $('#hint').textContent = 'Reading files…';
+  for (const f of files){
+    const url = URL.createObjectURL(f), d = await probe(url);
+    if (d < 0){ URL.revokeObjectURL(url); continue; }
+    S.tracks.push({name: cleanName(f.name), url, dur: d || 180});
+  }
+  $('#hint').textContent = S.tracks.length ? 'Press ▶ to drop the needle' : "Couldn't read those files";
+  renderTracks(); drawGrooves();
+}
+$('#fileIn').addEventListener('change', e => { loadFiles(e.target.files); e.target.value = ''; });
+['dragover','drop'].forEach(ev => document.addEventListener(ev, e => {
+  e.preventDefault(); if (ev === 'drop' && e.dataTransfer) loadFiles(e.dataTransfer.files);
+}));
+$('#label').addEventListener('click', () => $('#artIn').click());
+$('#artIn').addEventListener('change', e => {
+  const f = e.target.files[0]; if (!f) return;
+  const lab = $('#label'); lab.style.backgroundImage = `url("${URL.createObjectURL(f)}")`; lab.classList.add('art');
+  e.target.value = '';
+});
+
+/* ---------------- Controls ---------------- */
+$('#playBtn').addEventListener('click', () => {
+  initAudio(); ctx.resume();
+  if (!S.tracks.length){ $('#fileIn').click(); return; }
+  if (S.phase === 'idle') dropAt(S.idx);
+  else if (S.phase === 'paused'){ unlock(); resume(); }
+  else if (S.phase === 'cue') lift();
+  else pause();
+});
+$('#nextBtn').addEventListener('click', () => { if (S.tracks.length) dropAt((S.idx + 1) % S.tracks.length); });
+$('#liftBtn').addEventListener('click', lift);
+$('#rpmSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.rpm = +b.dataset.rpm;
+  [...$('#rpmSeg').children].forEach(x => x.classList.toggle('on', x === b));
+  applyAll();
+});
+$('#abSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.clean = b.dataset.ab === 'clean';
+  [...$('#abSeg').children].forEach(x => x.classList.toggle('on', x === b));
+  applyAll();
+});
+const chips = $('#chips');
+Object.keys(PRESETS).forEach(name => {
+  const c = document.createElement('button'); c.className = 'chip'; c.textContent = name;
+  c.onclick = () => setPreset(name); chips.appendChild(c);
+});
+const sl = $('#sliders');
+SLIDERS.forEach(([key, label]) => {
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = `<span>${label}</span><input type="range" min="0" max="100" id="s-${key}"><span class="v" id="v-${key}"></span>`;
+  sl.appendChild(r);
+  r.querySelector('input').addEventListener('input', e => {
+    S[key] = +e.target.value; $('#v-' + key).textContent = S[key];
+    S.preset = null; syncChips(); applyAll();
+  });
+});
+function syncChips(){ [...chips.children].forEach(c => c.classList.toggle('on', c.textContent === S.preset)); }
+function setPreset(name){
+  Object.assign(S, PRESETS[name]); S.preset = name;
+  SLIDERS.forEach(([k]) => { $('#s-' + k).value = S[k]; $('#v-' + k).textContent = S[k]; });
+  syncChips(); applyAll();
+}
+setPreset('VG+');
+drawGrooves(); updateUI(); draw();
+})();
+</script>
+</body>
+</html>
